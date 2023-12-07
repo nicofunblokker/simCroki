@@ -159,7 +159,7 @@ def server(input, output, session):
 
     @session.download(filename="data.csv")
     def download():
-        yield simData().to_csv(index = False)
+        yield simData().to_csv(index = False, header = False)
 
 app = App(app_ui, server)
 </code></pre>
