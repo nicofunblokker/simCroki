@@ -1,0 +1,111 @@
+---
+title: Simulate game of Crokinole
+format:
+  html:
+    resources: 
+      - shinylive-sw.js
+filters:
+  - shinylive
+---
+
+This is a *Shinylive application* that simulates a game of Crokinole and returns the results. You may specify the number of rounds to play by adjusting the slider. Note: currently round length = number of players.
+
+
+
+```{shinylive-python}
+#| standalone: true
+#| viewerHeight: 500
+#| layout: vertical
+
+from shiny import *
+import pandas as pd
+import numpy as np
+import string
+from datetime import datetime, timezone
+
+def createGame(spielerRunden = None):
+  if(spielerRunden == None):
+    maxRound = np.random.randint(2, 4)
+  else:
+    maxRound = spielerRunden
+  
+  rounds = list(range(1, maxRound+1)) * maxRound
+  rounds.sort()
+  
+  score = np.random.normal(143/4, 59/4, len(rounds))
+  score = np.round(score/5)*5
+  score = [0 if x < 0 else int(x) for x in score]
+  
+  names = np.random.choice(range(0,26), size = maxRound, replace = False)
+  player = [string.ascii_uppercase[i] for i in names]
+  
+  date = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+  
+  def goals(i):
+    outcome = np.random.choice(["self", "other", None], size = maxRound, p = [0.4, 0.2, 0.4]).tolist()
+    hits = []
+    for j in outcome:
+      if(j == "self"):
+        hits.append(i)
+      elif(j == "other"):  
+        other = np.random.choice([x for x in player if x != i], size = 1).tolist()[0]
+        hits.append(other)
+      else:
+        hits.append("")
+    return(hits) 
+  playerHits = list(map(goals, player)) 
+  
+  generics = ["B", "R", "W", "S"]
+  genericsList = np.repeat([generics[i] for i in range(0, len(player))], repeats = maxRound).tolist() 
+    
+  df = pd.DataFrame({'id': genericsList, 'to': [j for i in playerHits for j in i]})
+  df["to"] = pd.Categorical(df["to"], categories = player)
+
+  
+  DFtwenties = df.groupby("to").agg("sum")
+  twenties = DFtwenties["id"].tolist()
+  twenties = [str(element) if element != 0 else '' for element in twenties]
+  twenties.extend([""]*(len(player)*(maxRound-1)))
+  twenties
+  
+  return {"Game": 1, "Date": date, "Round": rounds, "Player": player*maxRound,  "Score": score,  "Twenties": twenties}
+
+def simulateGames(size = 4, spielerRunden = 4):
+    listDF = []
+    for i in range(0,size):
+        df = pd.DataFrame(createGame(spielerRunden = spielerRunden))
+        df["Game"] = i+1
+        listDF.append(df)
+    sim = pd.concat(listDF, ignore_index=True)
+    return(sim)
+
+
+app_ui = ui.page_fluid(
+    ui.input_slider("n", "Number of Rounds and Players", 2, 4, 4),
+    ui.output_data_frame("simTable"),
+    ui.download_button("download", "Download CSV")
+)
+
+def server(input, output, session):
+    @output
+    @render.data_frame
+    def simTable():
+        return render.DataGrid(
+            simData(),
+            row_selection_mode="multiple",
+            width="100%",
+            height="100%",
+        )
+    
+    @reactive.Calc
+    def simData():
+      return simulateGames(size = 1, spielerRunden= int(input.n())
+      )
+
+    @session.download(filename="data.csv")
+    def download():
+        yield simData().to_csv(index = False)
+
+app = App(app_ui, server)
+
+```
