@@ -157,9 +157,9 @@ def server(input, output, session):
       return simulateGames(size = 1, spielerRunden= int(input.n())
       )
 
-    @session.download(filename="data.csv")
+    @session.download(filename="crokinoleSim.csv")
     def download():
-        yield simData().to_csv(index = False)
+        yield simData().to_csv(index = False, header = False)
 
 app = App(app_ui, server)
 </code></pre>
