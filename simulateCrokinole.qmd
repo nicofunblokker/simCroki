@@ -37,7 +37,7 @@ def createGame(spielerRunden = None):
   score = [0 if x < 0 else int(x) for x in score]
   
   names = np.random.choice(range(0,26), size = maxRound, replace = False)
-  player = [string.ascii_uppercase[i] for i in names]
+  player = ["P" + str(i) for i in names.tolist()]
   
   date = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
   
